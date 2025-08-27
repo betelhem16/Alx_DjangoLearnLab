@@ -1,12 +1,11 @@
 from django.db import models
 
-# Create your models here.
-
-
 class Book(models.Model):
-    title = models.CharField(max_length=200)
-    author = models.CharField(max_length=100)
-    publication_year = models.IntegerField()
+    title = models.CharField(max_length=200)      # Required by ALX
+    author = models.CharField(max_length=100)     # Required by ALX
+    publication_year = models.IntegerField()      # Required by ALX
 
     def __str__(self):
         return f"{self.title} by {self.author} ({self.publication_year})"
+
+
