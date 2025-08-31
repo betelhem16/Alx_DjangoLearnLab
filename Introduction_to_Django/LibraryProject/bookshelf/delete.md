@@ -1,3 +1,6 @@
+# Delete Book
+book = Book.objects.get(title="Nineteen Eighty-Four")
 book.delete()
-Book.objects.all()
-# Output: <QuerySet []>
+print(Book.objects.all())
+# Expected Output: <QuerySet []>  (No books in the database)
+
