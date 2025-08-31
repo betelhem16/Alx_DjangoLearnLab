@@ -1,2 +1,5 @@
-Book.objects.all()
-# Output: <QuerySet [<Book: 1984 by George Orwell (1949)>]>
+# Retrieve Book
+book = Book.objects.get(title="1984")
+print(book.title, book.author, book.publication_year)
+# Expected Output: 1984 George Orwell 1949
+
