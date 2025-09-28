@@ -1,80 +1,69 @@
-from rest_framework import generics, permissions
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
-from .models import Book
-from .serializers import BookSerializer
-
-from django_filters import rest_framework as filters  
-
-from django_filters import rest_framework as filters
-
-# Create your views here.
-from rest_framework import generics , permissions
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
-from rest_framework import filters
-from django_filters.rest_framework import DjangoFilterBackend
-from .models import Author, Book
-from .serializers import AuthorSerializer, BookSerializer
+from rest_framework import status
+from rest_framework.test import APITestCase
+from django.contrib.auth.models import User
+from api.models import Book
 
 
-# List all books with filtering, searching, and ordering
-"""
-BookListView:
-    - Supports filtering by: title, author, publication_year
-    - Supports searching in: title, author name
-    - Supports ordering by: title, publication_year
-    Usage examples:
-        /api/books/?title=The River Between
-        /api/books/?search=River
-        /api/books/?ordering=-publication_year
-"""
+class BookAPITestCase(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="testuser", password="testpass")
+        self.client.force_authenticate(user=self.user)
+        self.book = Book.objects.create(
+            title="Test Book",
+            publication_year=2020,
+            author=self.user
+        )
 
-class BookListView(generics.ListAPIView):
-    queryset = Book.objects.all()
-    serializer_class = BookSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    def test_create_book(self):
+        data = {
+            "title": "New Book",
+            "publication_year": 2022,
+            "author": self.user.id
+        }
+        response = self.client.post("/api/books/create/", data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("title", response.data)  # ✅ check response.data
+        self.assertEqual(response.data["title"], "New Book")
 
-    # Enable filtering, searching, ordering
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    def test_list_books(self):
+        response = self.client.get("/api/books/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)  # ✅ response.data is list
+        self.assertIn("title", response.data[0])
 
-    # Filtering by these fields
-    filterset_fields = ['title', 'author', 'publication_year']
+    def test_get_single_book(self):
+        response = self.client.get(f"/api/books/{self.book.id}/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], "Test Book")
 
-    # Searching by title and author
-    search_fields = ['title', 'author__name']  # assuming author has a "name" field
-    filterset_fields = ['title', 'author', 'publication_year'] 
-    # Ordering by title and publication year
-    ordering_fields = ['title', 'publication_year']
-    ordering = ['title']  # default ordering
+    def test_update_book(self):
+        data = {
+            "title": "Updated Book",
+            "publication_year": 2023,
+            "author": self.user.id
+        }
+        response = self.client.put(f"/api/books/update/{self.book.id}/", data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], "Updated Book")
 
-# List & Create Authors
-class AuthorListCreateView(generics.ListCreateAPIView):
-    queryset = Author.objects.all()
-    serializer_class = AuthorSerializer
-# List all books (Read-only, accessible by anyone)
-#(2. Implementing Filtering, Searching, and Ordering in Django REST Framework)
-class BookListView(generics.ListAPIView):
-    queryset = Book.objects.all()
-    serializer_class = BookSerializer
-    permission_classes = [permissions.AllowAny]  # public read access
+    def test_delete_book(self):
+        response = self.client.delete(f"/api/books/delete/{self.book.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-class BookDetailView(generics.RetrieveAPIView):
-    queryset = Book.objects.all()
-    serializer_class = BookSerializer
-    permission_classes = [permissions.AllowAny]
+    def test_filter_books_by_title(self):
+        Book.objects.create(title="Another Book", publication_year=2021, author=self.user)
+        response = self.client.get("/api/books/?search=Test")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(any("Test Book" in book["title"] for book in response.data))
 
-class BookCreateView(generics.CreateAPIView):
-    queryset = Book.objects.all()
-    serializer_class = BookSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    def test_order_books_by_year(self):
+        Book.objects.create(title="Older Book", publication_year=1999, author=self.user)
+        response = self.client.get("/api/books/?ordering=publication_year")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        years = [book["publication_year"] for book in response.data]
+        self.assertEqual(years, sorted(years))
 
-class BookUpdateView(generics.UpdateAPIView):
-    queryset = Book.objects.all()
-    serializer_class = BookSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-class BookDeleteView(generics.DestroyAPIView):
-    queryset = Book.objects.all()
-    serializer_class = BookSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-
+    def test_permissions_required(self):
+        self.client.force_authenticate(user=None)  # logout
+        response = self.client.get("/api/books/")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
