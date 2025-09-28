@@ -67,3 +67,4 @@ class BookAPITestCase(APITestCase):
         self.client.force_authenticate(user=None)  # logout
         response = self.client.get("/api/books/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
