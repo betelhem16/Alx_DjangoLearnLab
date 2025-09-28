@@ -2,7 +2,11 @@ from rest_framework import generics, permissions
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from .models import Book
 from .serializers import BookSerializer
+
 from django_filters import rest_framework as filters  
+
+from django_filters import rest_framework as filters
+
 # Create your views here.
 from rest_framework import generics , permissions
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
@@ -37,7 +41,7 @@ class BookListView(generics.ListAPIView):
 
     # Searching by title and author
     search_fields = ['title', 'author__name']  # assuming author has a "name" field
-
+    filterset_fields = ['title', 'author', 'publication_year'] 
     # Ordering by title and publication year
     ordering_fields = ['title', 'publication_year']
     ordering = ['title']  # default ordering
